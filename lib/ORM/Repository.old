@@ -1,0 +1,256 @@
+<?php
+/**************************************
+ * File Name: Repository.php
+ * User: Kyle Wei - cst234
+ * Date: 2019-10-16
+ * Project: CWEB280
+ * This class will contain functions and some properties that will be used to run SQL commands on the database
+ * The functions will receive entities as parameters - the entities contain data that will be bound to the prepared statements
+ **************************************/
+
+namespace ORM;
+
+spl_autoload_register(function($entityClassName)
+{
+    //RULE 4: All entity children will be in the lib folder 1 level above this ORM folder - the class is the same as the file name
+    require_once '../' . $entityClassName . '.php';
+});
+
+//Better solution is to extend the built-in PHP SQLite3 object
+class Repository extends \SQLite3
+{
+    //RULE 6: Always set the last statement property just before a prepare and execute - Makes debugging easier
+    private $lastStatement;
+
+    /**
+     * @return mixed
+     */
+    public function getLastStatement()
+    {
+        return $this->lastStatement;
+    }
+
+    /***
+     * @param $entity
+     * @return int - RULE 5: on Statement Failure returns -1, Result Failure returns 0, Success returns 1
+     */
+    public function insert($entity)
+    {
+        //BEST PRACTICE: Should also call validate before calling repo->insert
+        //If entity is not valid, return code -2 to go along with -1, 0, and 1
+        if(count($entity->validate()) > 0) { return -2; };
+
+        //Figure out what table to insert into
+        //Rule 1: Class name will be the same as the Table name in the database
+        $tbl = $entity->getClassName();
+
+        //Figure out the fields/columns within the table
+        //RULE 2: The properties within the entity child class must be the same as the table column names
+        $properties = get_object_vars($entity); //Gets an assoc array of properties as key and value as value
+        //TODO: Deal with auto-incrementing fields - the DB might through an error if trying to insert a value
+
+        //Determine the values/data to insert into the new row
+        //RULE 3: The properties Assoc array contains keys (column name) and values that will be inserted to the table
+        //Example: $properties = ["id"=>"1234", "familyName"=>"Smith", "givenName"=>"Bob", ....]
+
+        //Create a prepared statement - with the correct table, fields and placeholders
+        $fieldString = implode(',',array_keys($properties));    //Example: $fieldString = 'id,familyName,givenName, ...'
+        $qMarkString = rtrim(str_repeat('?,', count($properties)), ',');
+
+
+        //MINICISE 20: Create a prepared statement with
+        //Bind the placeholders to the corresponding data
+        $sql = "INSERT INTO $tbl ($fieldString) VALUES($qMarkString)";
+        $this->lastStatement = $sql;    //Part of RULE 6 for debugging
+
+        $stmt = $this->prepare("$sql");
+        if(!$stmt) { return -1; }   //Returning -1 as a status code to indicate the prepared statement failed
+
+        $i = 1;
+        foreach($properties as $field=>$val)
+        {
+            $sql .= " [$i: $field = $val] ";
+            $stmt->bindValue($i++, $val);   //TODO: Figure out the bind type for the value
+        }
+
+
+        $this->lastStatement = $sql;    //For debugging
+        //Execute the statement
+        $result = $stmt->execute();
+        $stmt->close();
+
+        //Return some sort of indication of success or failure
+        return $result ? 1 : 0;
+    }
+
+    //RULE 7: In Select, the properties and values in the entity child will be used as filters in the where clause
+    //To select all, can do WHERE 1 = 1 (WHERE TRUE)
+    public function select($entity)
+    {
+
+        //Find table name
+        $tbl =  $entity->getClassName();
+
+        //Find field names (comma separated)
+        $properties = get_object_vars($entity);
+        $fields = implode(',', array_keys($properties));
+
+        //Determine WHERE clause - If all properties are empty, then use 1=1 as WHERE criteria
+        $whereString = "";
+        $filter = [];   //Subset of properties array with only the properties that have values
+        foreach($properties as $field=>$val)
+        {
+            $count = count($properties);
+            if(!empty($val))
+            {
+                $filter[$field] = $val;
+                $and = count($filter) > 1 ? 'AND' : "";
+                $whereString .= " $and $field=?";
+            }
+        }
+
+        $whereString = empty($filter) ? " 1=1 " : $whereString;
+
+        //Create the Prepare statement - Follow rules 5 and 6
+        //MINICISE 21: Write the prepared statement according to rules 5 and 6
+        $sqlString = "SELECT $fields FROM $tbl WHERE $whereString";
+
+        $this->lastStatement = $sqlString;
+
+        $selectStmt = $this->prepare($sqlString);
+        if(!$selectStmt) { return -1; }
+
+        //Bind values for the WHERE clause
+        $i = 1;
+
+        foreach($filter as $field=>$val)
+        {
+            $sqlString .= " [$i: $field = $val] ";
+            $selectStmt->bindValue($i++, $val);   //TODO: Figure out the bind type for the value
+        }
+
+        $this->lastStatement = $sqlString;    //For debugging
+
+        //Execute the statement - Follow Rule 6 and Rule 5
+        $result = $selectStmt->execute();
+        if(!$result)
+        {
+            return 0;
+        }
+        $resultSet = [];
+
+        //Loop through the result to get the rows, and put rows into a 2D array
+        while($tableRow = $result->fetchArray(SQLITE3_ASSOC))
+        {
+            $newEntity = new $tbl;
+
+            foreach($tableRow as $field=>$val)
+            {
+                $newEntity->$field=$val;
+            }
+
+            $resultSet[] = $newEntity;
+        }
+        $selectStmt->close();
+        return $resultSet;
+//Return some sort of indication of success or failure
+
+
+        //Return 2D array
+    }
+
+
+    //MINICISE 28: Fix the update function to use pkName instead of hardcoded 'id'
+    public function update($entity)
+    {
+        //BEST PRACTICE: Should also call validate before calling repo->update
+        //If entity is not valid, return code -2 to go along with -1, 0, and 1
+        if(count($entity->validate()) > 0) { return -2; };
+
+        $pkName = $entity->getPkName();
+
+        //MINICISE 25: Do the first three steps of the algorithm
+        //1 - Get table name
+        $tbl = $entity->GetClassname();
+
+        //2 - Get properties and values from the entity
+        $properties = get_object_vars($entity);
+
+        $idValue = $properties[$pkName];   //store ID value for later
+        unset($properties[$pkName]);       //Removes the id field of $properties
+        $setFields = implode('=?, ', array_keys($properties));
+        $setFields .= "=?";
+
+        $whereFields = "$pkName=?";
+
+        //3 - Figure out update SET clause
+        $setClause = " SET $setFields";
+
+        //Figure out the where clause
+        $whereClause = " WHERE $whereFields";
+
+        //Create prepared statement. Remember Rules 5 and 6
+        $sqlString = "UPDATE $tbl SET $setFields WHERE $whereFields";
+        $this->lastStatement = $sqlString;
+        $setStmt=$this->prepare($sqlString);
+        if(!$setStmt) { return -1; }
+
+        //Bind values to the statement. Remember the rules
+        $i = 1;
+
+        foreach($properties as $field=>$val)
+        {
+            $sqlString .= " [$i:$field=$val] ";
+            $setStmt->bindValue($i++, $val);
+        }
+
+        $sqlString .= " [$i: $pkName=" . $entity->$pkName . "]";
+        $setStmt->bindValue($i,$idValue);
+
+        //Execute the statement. Remember the rules.
+        $this->lastStatement=$sqlString;
+        $result = $setStmt->execute();
+        $setStmt.close();
+
+        //Return indication of success. Remember the rules.
+        return $result ? 1: 0;
+    }
+
+    public function delete($entity)
+    {
+        $pkName = $entity->getPkName(); //in this example, 4pkName = 'studentID'
+
+        //Find table name
+        $tbl = $entity->GetClassName();
+
+        $id = $entity->$pkName;
+
+        //Figure out where clause
+        $whereString = "$pkName=?";      //For now, assume ID will be the primary key and only field
+
+        //3 - Figure out DELETE clause
+        $sqlString = "DELETE FROM $tbl WHERE $whereString";
+
+        //Prepare the statement, remember rules
+        $this->lastStatement = $sqlString;
+
+        $deleteStmt = $this->prepare($sqlString);
+        if(!$deleteStmt) { return -1; }
+
+        //Bind values remember rules
+        $sqlString .= " [1:$pkName = $id]";
+        $deleteStmt->bindValue(1, $id);
+
+        $this->lastStatement .= $sqlString;
+
+        //Execute the statement. Remember the rules.
+        $result = $deleteStmt->execute();
+        $deleteStmt->close();
+
+        //Return indication of success. Remember the rules.
+        return $result ? 1: 0;
+
+
+
+    }
+}

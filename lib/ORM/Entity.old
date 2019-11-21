@@ -1,0 +1,91 @@
+<?php
+/**************************************
+ * File Name: Entity.php
+ * User: Kyle Wei - cst234
+ * Date: 2019-10-16
+ * Project: CWEB280
+ *
+ *  The base class for an Entity object.
+ * Children of this class will be sent to the Repository as parameters
+ * Entities will also have validation rules for the entity properties
+ *      This means that entities will check the data coming from the user before storing in the database
+ *      and the other way around too (validate information coming from the database before displaying it to the user)
+ **************************************/
+
+namespace ORM;
+
+abstract class Entity
+{
+    protected $pkName = 'id'; //Set a default for primary key to be 'id' for al new entity children
+    protected $displayNames = [];   //Stores the look up for display name as a Value and field name as a Key
+
+
+    /**
+     * @return string - The property name that is the primary key/unique identifier for the entity
+     */
+    public function getPkName(): string
+    {
+        return $this->pkName;
+    }
+
+    //MINICISE 30 - Write a function that will return the display name for a given field
+    // if the field is not in the array, return the given field name
+    public function getDisplayName($field)
+    {
+        if(isset($this->displayNames[$field]))
+        {
+            return $this->displayNames[$field];
+        }
+        else
+        {
+            return $field;
+        }
+    }
+
+    public function getClassName()
+    {
+        return get_class($this);    //Returns the class name of the child object
+    }
+
+    /***
+     * @param $array - Associative array that has the same keys as the entity has properties
+     * @return $this - Returns the instance of the entity
+     */
+    public function parseArray($array)
+    {
+        //TODO: Ensure the array is assoc has the correct keys
+            //array_diff
+        //Set the values for the properties in the entity child
+
+        foreach($array as $field=>$valFromArray)
+        {
+
+            //Same as this->studentID.id
+            $this->$field = $valFromArray;
+        }
+
+        //Return this entity
+        return $this;
+    }
+
+    /***
+     * Validation method for entities. Should be called before entities are sent to the database
+     * @return array - Array of all errors. Empty if all properties are valid, otherwise will contain error messages
+     */
+    public function validate()
+    {
+        $methodNames = get_class_methods($this->getClassName());    //Creates an array of method names from the entity child
+        $oneBigArray = [];
+
+        foreach($methodNames as $methodName)
+        {
+            if(preg_match('/^(validate_){1}.*$/',$methodName))
+            {
+                $result = call_user_func([$this, $methodName]);
+                $oneBigArray = array_merge($oneBigArray, $result);
+            }
+        }
+
+        return $oneBigArray;
+    }
+}
