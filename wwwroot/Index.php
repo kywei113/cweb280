@@ -76,6 +76,8 @@ $msg = "Hi this is from PHP"; //Stores text within the $msg variable
             <li><a href="lo4569/usedbclasses.php">Use DB Classes</a></li>
             <li><a href="lo4569/student-ui.php">Student UI</a></li>
             <li><a href="lo4569/students-api.php">Student API</a></li>
+            <li><a href="lo4569/student-ui+comp.php">Student UI + Components</a></li>
+            <li><a href="lo4569/">Temp to Nowhere</a></li>
         </ul>
     </div>
     <div>
