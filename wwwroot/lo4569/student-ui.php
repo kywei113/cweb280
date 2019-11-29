@@ -231,36 +231,6 @@
                         this.loading = false;
                     })
             },
-            deleteConfirm: function(student)
-            {
-                this.showDelPrompt = true;
-                this.confirmStudent = student;      //Can't edit, so assign is not needed?
-            },
-            deleteStudent: function()
-            {
-              axios.delete('students-api.php', { params: {id:this.confirmStudent.studentID }})
-                  .then(response => {       //Status code 200 - 299
-                      this.axiosResult = response;
-
-                      if(response.status === 204)   //Successful delete will return a 204 status code
-                      {
-                          //MINICISE 36: Do the following
-                          //Find student in students array, remove it, //Cancel the edit
-                          let id = this.students.findIndex(s => s.studentID == response.config.params.id);
-                          this.students.splice(id, 1);
-                          this.editCancel();
-                      }
-                  })
-                  .catch(errors => {        //Status code 400 - 600
-                      let response = errors.response;
-                      this.axiosResult = errors;//ONLY FOR DEBUG
-                      if(response.status === 418)
-                      {
-                          this.students = []; //Sets students to an empty array
-                      }
-                  })
-                // this.getData();
-            },
 
             postStudent: function ()
             {
@@ -351,6 +321,36 @@
             fixBackdrop: function ()
             {
                 document.querySelector('.modal-backdrop').classList.add('show');
+            },
+            deleteConfirm: function(student)
+            {
+                this.showDelPrompt = true;
+                this.confirmStudent = student;      //Can't edit, so assign is not needed?
+            },
+            deleteStudent: function()
+            {
+                axios.delete('students-api.php', { params: {id:this.confirmStudent.studentID }})
+                    .then(response => {       //Status code 200 - 299
+                        this.axiosResult = response;
+
+                        if(response.status === 204)   //Successful delete will return a 204 status code
+                        {
+                            //MINICISE 36: Do the following
+                            //Find student in students array, remove it, //Cancel the edit
+                            let id = this.students.findIndex(s => s.studentID == response.config.params.id);
+                            this.students.splice(id, 1);
+                            this.editCancel();
+                        }
+                    })
+                    .catch(errors => {        //Status code 400 - 600
+                        let response = errors.response;
+                        this.axiosResult = errors;//ONLY FOR DEBUG
+                        if(response.status === 418)
+                        {
+                            this.students = []; //Sets students to an empty array
+                        }
+                    })
+                // this.getData();
             }
         },
         computed: {
