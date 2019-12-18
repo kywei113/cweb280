@@ -31,37 +31,52 @@ class Repository extends \SQLite3
         return $results;
     }
 
-    public function insert($entity) {
-        if(count($entity->validate())){return -2;}
+    /***
+     * @param $entity - Entity child that contains the properties/fields and values to be inserted into the database
+     * @return int - RULE: On validation Error return 02, on Statement error return -1, on Execution error return 0, on Success return 1
+     */
+    public function insert($entity)
+    {
+        //BEST PRACTICE: Validate the entity before calling the insert function
+        if(count($entity->validate()))
+        {
+            return -2;  //RULE: On validation error return -2
+        }
 
+        //Get the table name and properties (with values) from the entity
         $tableName = $entity->getClassName();
-        $autoFields = $entity->getAutoIncrementColumnDefinitions();
-        $filteredProperties = array_diff_key(get_object_vars($entity), $autoFields );
+        $autoFields = $entity->getAutoIncrementColumnDefinitions(); //Get all fields that contain AUTOINCREMENT in their column definition
+        $filteredProperties = array_diff_key(get_object_vars($entity), $autoFields ); //Filter out the AutoIncrement fields from the properties array
 
+        //Determine the field list and placeholders for the prepared statement
         $fieldString = implode(',', array_keys($filteredProperties));
         $qMarkString = str_repeat('?,', count($filteredProperties)-1) . '?';
 
+        //Preparing the INSERT statement - remember the rules
         $this->lastStatement = "INSERT INTO $tableName ($fieldString) VALUES($qMarkString)";
         $stmt=$this->prepare($this->lastStatement);
-        if(!$stmt){return -1;}
+        if(!$stmt){return -1;}  //RULE: On Statement error return -1
 
+        //Bind values for the placeholders in the INSERT statement
         $i = 1;
         foreach($filteredProperties as $field=>$val){
-            $this->lastStatement .= " [$i:$field=$val] ";
+            $this->lastStatement .= " [$i:$field=$val] ";   //RULE: Save the bound values in the lastStatement for debugging
             $stmt->bindValue($i++,$val,$entity->getBindType($field));
         }
 
 
+        //Execute statement - remember the rules
         $result = $stmt->execute();
-        if($result){
-            $autoID = $this->lastInsertRowID();
-            foreach (array_keys($autoFields) as $field){
-                $entity->$field = $autoID;
+        if($result) //Entity data successfully saved to database
+        {
+            $autoID = $this->lastInsertRowID(); //Get the last auto incremented value from the database
+            foreach (array_keys($autoFields) as $field) //Loop through autofields
+            {
+                $entity->$field = $autoID;  //Set their values to the last auto from DB
             }
         }
-        $stmt->close();
-        return $result ? 1: 0;
-
+        $stmt->close(); //BEST PRACTICE: Close statement after we are done with the result
+        return $result ? 1: 0;      //RULE: On execute error return 0, on success return 1
     }
 
     /**
@@ -112,34 +127,44 @@ class Repository extends \SQLite3
     }
 
 
+
+    /***
+     * MINICISE - CST234
+     * @param $entity - Entity with properties and values to identify a target record, and values to update the record with
+     * @return int - Status codes indicating method success or various errors.
+     *      Validation Error returns -2,
+     *      Statement Error returns -1,
+     *      Execution Error returns 0,
+     *      Success returns 1
+     */
     public function update($entity)
     {
-        if(count($entity->validate())){return -2;}
+        if(count($entity->validate())){return -2;}      //Validates the incoming entity object. Returns -2 if validation error is found
        
-        $properties = get_object_vars($entity);
-        $pkName = $entity->getPkName();
+        $properties = get_object_vars($entity);         //Gets properties and corresponding values from Entity
+        $pkName = $entity->getPkName();                 //Determines the name of the entity's primary key
 
-        unset($properties[$pkName]);
-        $setString = implode('=?, ',array_keys($properties)).'=?';
+        unset($properties[$pkName]);                    //Unsets the entity's primary key value
+        $setString = implode('=?, ',array_keys($properties)).'=?';  //Creates string of property names and placeholders
 
-        $this->lastStatement = "UPDATE {$entity->getClassName()} SET $setString WHERE $pkName=?";
-        $stmt=$this->prepare($this->lastStatement);
-        if(!$stmt){return -1;}
+
+        $this->lastStatement = "UPDATE {$entity->getClassName()} SET $setString WHERE $pkName=?";    //Structures UPDATE string with Table, Fields with placeholders, and primary key criteria
+        $stmt=$this->prepare($this->lastStatement);     //Prepares the statement
+        if(!$stmt){return -1;}      //If statement preparation fails, return -1
 
         $i = 1;
         foreach($properties as $field=>$val){
-            $this->lastStatement .= " [$i:$field=$val] ";
-            $stmt->bindValue($i++,$val,$entity->getBindType($field));
+            $this->lastStatement .= " [$i:$field=$val] "; //Saves bound properties and values in lastStatement for debugging
+            $stmt->bindValue($i++,$val,$entity->getBindType($field));   //Binds values to properties and gets appropriate data type for the field
         }
 
-        $this->lastStatement .= " [$i:$pkName={$entity->$pkName}] ";
-        $stmt->bindValue($i,$entity->$pkName,$entity->getBindType($pkName));
+        $this->lastStatement .= " [$i:$pkName={$entity->$pkName}] ";        //Adds primary key property/value to lastStatement
+        $stmt->bindValue($i,$entity->$pkName,$entity->getBindType($pkName));    //Binds primary key value to final placeholder
 
 
-        $result = $stmt->execute();
-        $stmt->close();
-        return $result ? 1: 0;
-
+        $result = $stmt->execute();     //Executes statement
+        $stmt->close();             //Closes the statement
+        return $result ? 1: 0;          //On execution error returns 0, on success returns 1
     }
 
     public function delete($entity){

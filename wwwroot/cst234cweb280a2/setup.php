@@ -133,7 +133,8 @@ function runDeleteMass($repo)
 function populateTables($repo)
 {
     $brands = ['Oreo', 'Coffee Crisp','Ichiban','Nongshim','Kraft','Kitkat','Pilsbury','Voortman','Nissin','Mr.Noodle','Generic','Loblaw','Dad\'s', 'Baby Ruth', 'Big Turk'];
-    $flavours = ['Chocolate','Fudge','Chicken','Curry','Sriracha','Peanut Butter','Mint Chocolate','Oatmeal Raisin','Beef','Pork','Yakisoba','Squid Ink','Strawberry','Green Tea','Plain Mochi','Licorice','Whyyyyyyyy'];
+    $flavours = ['Chocolate','Fudge','Chicken','Curry','Sriracha','Peanut Butter',
+        'Mint Chocolate','Oatmeal Raisin','Beef','Pork','Yakisoba','Squid Ink','Strawberry','Green Tea','Plain Mochi','Licorice','Whyyyyyyyy'];
     $nationalities = ['United State','Canada','Italy','England','Wales','Scotland','Ireland','Germany','France','Belgium','Denmark','The Netherlands','Mexico','China','Japan','Vietnam','Narnia'];
     $types = ['Sugar','Cheese Cake','Carrot','Brownie','Hot Fudge','Sour Dough','Dough Dough','Dough Boi','One Tuff Cookie','Mystery Meat','Not-Human','Not-A-Household-Pet','Beef','Pork','Candy'];
 

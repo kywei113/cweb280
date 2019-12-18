@@ -109,6 +109,14 @@ $msg = "Hi this is from PHP"; //Stores text within the $msg variable
         <h1>Assignment 3</h1>
         <ul>
             <li><a href="cst225cst227cst234/vehicleInput_TestPage.php">A3 Vehicle Input Test Page</a></li>
+            <li><a href="cst225cst227cst234/Vehicle-UI.php">A3 Vehicle UI</a></li>
+        </ul>
+    </div>
+
+    <div>
+        <h1>Final Practice</h1>
+        <ul>
+           <li><a href="finalPractice/finalPrac-UI.php">Final Practice UI</a></li>
         </ul>
     </div>
 

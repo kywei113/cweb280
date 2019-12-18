@@ -89,23 +89,40 @@ abstract class Entity
         $this->bindTypes[$field] = $bindType;           //Adds an entry to the entity's bindType array, contains the SQLITE3 data type to use for the argument field
     }
 
+    /***
+     * Takes in an array of properties and values, and sets the current entity's properties based on those
+     * @param $array - Incoming array with related properties
+     * @return $this - Entity with provided values set
+     */
     public function parseArray($array)
     {
-         foreach (array_intersect_key($array, get_object_vars($this)) as $field=>$valFromArray){
+        //array_intersect_key - Compares the incoming array keys against the entity's properties, creates a new array with only the key/values from the incoming array
+        //Iterates through the resulting array and assigns the corresponding entity property with the value
+        foreach (array_intersect_key($array, get_object_vars($this)) as $field=>$valFromArray)
+        {
             $this->$field = $valFromArray;
         }
         return $this;
     }
 
+    /***
+     * Checks the current entity for any methods starting with validate_. Calls any validate methods found in it and
+     * returns an overall error array consisting of each methods errors
+     * @return array - Overall error array
+     */
     public function validate()
     {
-        $errorsArray =[];
+        $errorsArray =[];   //Instantiate errorArray
+
+        //Gets an array of the given class's methods, iterates through each name checking if they start with
+        //_validate. If they do, calls the validate method on current entity and merges the results into the
+        //existing error array. Returns error array
         foreach (get_class_methods($this) as $functionName){
             if(strpos($functionName,'validate_')===0) {
-                $errorsArray = array_merge($errorsArray, call_user_func([$this, $functionName]));
+                $errorsArray = array_merge($errorsArray, call_user_func([$this, $functionName]));   //Calls the found validate method with current entity as parameter
             }
         }
-        return $errorsArray;
+        return $errorsArray;    //Returns error array
     }
 
 }
